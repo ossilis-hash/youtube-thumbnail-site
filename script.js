@@ -41,3 +41,34 @@ function extractThumbnail() {
   errorMessage.textContent = "";
   result.style.display = "block";
 }
+
+window.addEventListener("DOMContentLoaded", () => {
+  loadExtensionData();
+});
+
+function loadExtensionData() {
+  const params = new URLSearchParams(window.location.search);
+
+  const videoId = params.get("videoId");
+  const title = params.get("title");
+  const channelName = params.get("channelName");
+  const url = params.get("url");
+  const thumbnailUrl = params.get("thumbnailUrl");
+
+  if (!videoId) {
+    return;
+  }
+
+  const extensionResult = document.getElementById("extensionResult");
+  const extensionThumbnail = document.getElementById("extensionThumbnail");
+  const extensionTitle = document.getElementById("extensionTitle");
+  const extensionChannel = document.getElementById("extensionChannel");
+  const extensionUrl = document.getElementById("extensionUrl");
+
+  extensionThumbnail.src = thumbnailUrl || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  extensionTitle.textContent = title || "제목 없음";
+  extensionChannel.textContent = channelName || "채널명 확인 안 됨";
+  extensionUrl.textContent = url || "";
+
+  extensionResult.style.display = "block";
+}
