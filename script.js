@@ -1,5 +1,10 @@
 window.addEventListener("DOMContentLoaded", () => {
   loadExtensionData();
+  loadStoredAnalyzerData();
+});
+
+window.addEventListener("youtubeAnalyzerDataLoaded", () => {
+  loadStoredAnalyzerData();
 });
 
 function loadExtensionData() {
@@ -22,12 +27,55 @@ function loadExtensionData() {
   const extensionChannel = document.getElementById("extensionChannel");
   const extensionUrl = document.getElementById("extensionUrl");
 
-  const finalThumbnailUrl = thumbnailUrl || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const finalThumbnailUrl =
+    thumbnailUrl || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
   extensionThumbnail.src = finalThumbnailUrl;
   extensionTitle.textContent = title || "제목 없음";
   extensionChannel.textContent = channelName || "채널명 확인 안 됨";
   extensionUrl.textContent = url || `https://www.youtube.com/watch?v=${videoId}`;
+
+  noDataMessage.style.display = "none";
+  extensionResult.style.display = "block";
+}
+
+function loadStoredAnalyzerData() {
+  const savedData = localStorage.getItem("youtubeAnalyzerData");
+
+  if (!savedData) {
+    return;
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(savedData);
+  } catch (error) {
+    console.error("저장된 데이터를 읽는 중 오류가 발생했습니다.", error);
+    return;
+  }
+
+  const noDataMessage = document.getElementById("noDataMessage");
+  const extensionResult = document.getElementById("extensionResult");
+  const extensionThumbnail = document.getElementById("extensionThumbnail");
+  const extensionTitle = document.getElementById("extensionTitle");
+  const extensionChannel = document.getElementById("extensionChannel");
+  const extensionUrl = document.getElementById("extensionUrl");
+  const rawScript = document.getElementById("rawScript");
+
+  if (data.thumbnailUrl) {
+    extensionThumbnail.src = data.thumbnailUrl;
+  } else if (data.videoId) {
+    extensionThumbnail.src = `https://img.youtube.com/vi/${data.videoId}/maxresdefault.jpg`;
+  }
+
+  extensionTitle.textContent = data.title || "제목 없음";
+  extensionChannel.textContent = data.channelName || "채널명 확인 안 됨";
+  extensionUrl.textContent = data.url || "";
+
+  if (data.transcript && rawScript) {
+    rawScript.value = data.transcript;
+  }
 
   noDataMessage.style.display = "none";
   extensionResult.style.display = "block";
@@ -215,11 +263,21 @@ function copyPrompt() {
 }
 
 function downloadAnalysis() {
-  const title = document.getElementById("extensionTitle").textContent || "영상 제목 없음";
-  const channel = document.getElementById("extensionChannel").textContent || "채널명 없음";
-  const url = document.getElementById("extensionUrl").textContent || "";
-  const script = document.getElementById("cleanedScript").value || document.getElementById("rawScript").value;
-  const prompt = document.getElementById("promptResult").value;
+  const title =
+    document.getElementById("extensionTitle").textContent || "영상 제목 없음";
+
+  const channel =
+    document.getElementById("extensionChannel").textContent || "채널명 없음";
+
+  const url =
+    document.getElementById("extensionUrl").textContent || "";
+
+  const script =
+    document.getElementById("cleanedScript").value ||
+    document.getElementById("rawScript").value;
+
+  const prompt =
+    document.getElementById("promptResult").value;
 
   if (!script.trim() && !prompt.trim()) {
     alert("다운로드할 분석 자료가 없습니다.");
@@ -255,7 +313,10 @@ ${prompt}
 }
 
 function downloadTextFile(filename, content) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob([content], {
+    type: "text/plain;charset=utf-8"
+  });
+
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
