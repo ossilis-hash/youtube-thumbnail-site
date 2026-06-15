@@ -1,12 +1,16 @@
 window.addEventListener("DOMContentLoaded", () => {
+  // 1단계: URL 파라미터가 있으면 우선적으로 빠르게 화면에 가인식 시킴
   loadExtensionData();
+  // 2단계: 로컬 스토리지에 최종 동기화된 마스터 데이터가 배치되었는지 점검 후 로드
   loadStoredAnalyzerData();
 });
 
+// 확장 프로그램이 웹사이트 내부 스토리지를 강제 업데이트 완료했을 때 터지는 커커스텀 이벤트 리스너
 window.addEventListener("youtubeAnalyzerDataLoaded", () => {
   loadStoredAnalyzerData();
 });
 
+// URL 주소창 뒤에 붙어오는 기본 메타 데이터를 파싱하여 바인딩하는 함수
 function loadExtensionData() {
   const params = new URLSearchParams(window.location.search);
 
@@ -30,15 +34,16 @@ function loadExtensionData() {
   const finalThumbnailUrl =
     thumbnailUrl || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
-  extensionThumbnail.src = finalThumbnailUrl;
-  extensionTitle.textContent = title || "제목 없음";
-  extensionChannel.textContent = channelName || "채널명 확인 안 됨";
-  extensionUrl.textContent = url || `https://www.youtube.com/watch?v=${videoId}`;
+  if (extensionThumbnail) extensionThumbnail.src = finalThumbnailUrl;
+  if (extensionTitle) extensionTitle.textContent = title || "제목 없음";
+  if (extensionChannel) extensionChannel.textContent = channelName || "채널명 확인 안 됨";
+  if (extensionUrl) extensionUrl.textContent = url || `https://www.youtube.com/watch?v=${videoId}`;
 
-  noDataMessage.style.display = "none";
-  extensionResult.style.display = "block";
+  if (noDataMessage) noDataMessage.style.display = "none";
+  if (extensionResult) extensionResult.style.display = "block";
 }
 
+// 확장 프로그램 마스터 객체(대본 텍스트 포함)를 로컬 스토리지에서 복사해 오는 메인 데이터 허브 함수
 function loadStoredAnalyzerData() {
   const savedData = localStorage.getItem("youtubeAnalyzerData");
 
@@ -47,7 +52,6 @@ function loadStoredAnalyzerData() {
   }
 
   let data;
-
   try {
     data = JSON.parse(savedData);
   } catch (error) {
@@ -63,24 +67,32 @@ function loadStoredAnalyzerData() {
   const extensionUrl = document.getElementById("extensionUrl");
   const rawScript = document.getElementById("rawScript");
 
-  if (data.thumbnailUrl) {
-    extensionThumbnail.src = data.thumbnailUrl;
-  } else if (data.videoId) {
-    extensionThumbnail.src = `https://img.youtube.com/vi/${data.videoId}/maxresdefault.jpg`;
+  // 데이터 유효성 검증 바인딩
+  if (extensionThumbnail) {
+    if (data.thumbnailUrl) {
+      extensionThumbnail.src = data.thumbnailUrl;
+    } else if (data.videoId) {
+      extensionThumbnail.src = `https://img.youtube.com/vi/${data.videoId}/maxresdefault.jpg`;
+    }
   }
 
-  extensionTitle.textContent = data.title || "제목 없음";
-  extensionChannel.textContent = data.channelName || "채널명 확인 안 됨";
-  extensionUrl.textContent = data.url || "";
+  if (extensionTitle) extensionTitle.textContent = data.title || "제목 없음";
+  if (extensionChannel) extensionChannel.textContent = data.channelName || "채널명 확인 안 됨";
+  if (extensionUrl) extensionUrl.textContent = data.url || "";
 
+  // 확장 프로그램이 수집한 원본 대본 텍스트를 대본 입력박스(rawScript)에 완전 동기화 자동 주입
   if (data.transcript && rawScript) {
     rawScript.value = data.transcript;
+    
+    // 사용자의 번거로움을 덜기 위해 데이터가 주입되자마자 대본 정리(cleanScript) 자동 트리거 가동
+    cleanScript();
   }
 
-  noDataMessage.style.display = "none";
-  extensionResult.style.display = "block";
+  if (noDataMessage) noDataMessage.style.display = "none";
+  if (extensionResult) extensionResult.style.display = "block";
 }
 
+// 추출된 대본 텍스트의 불필요한 노이즈 문자를 걷어내는 정제 프로세스
 function cleanScript() {
   const rawScript = document.getElementById("rawScript").value;
   const cleanedScript = document.getElementById("cleanedScript");
@@ -91,44 +103,29 @@ function cleanScript() {
   }
 
   const cleaned = rawScript
-    // WEBVTT 제거
-    .replace(/WEBVTT/g, "")
-
-    // SRT 번호 제거
-    .replace(/^\d+\s*$/gm, "")
-
-    // SRT 시간코드 제거
-    .replace(/\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,.]\d{3}.*/g, "")
-
-    // VTT 시간코드 제거
-    .replace(/\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}[,.]\d{3}.*/g, "")
-
-    // 유튜브 대본 시간코드 제거: 0:00, 12:34, 1:02:33
-    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, "")
-
-    // HTML 태그 제거
-    .replace(/<[^>]*>/g, "")
-
-    // 특수 메타 제거
-    .replace(/^(NOTE|STYLE|REGION).*$/gm, "")
-
-    // 줄 정리
+    .replace(/WEBVTT/g, "") // WEBVTT 헤더 제거
+    .replace(/^\d+\s*$/gm, "") // SRT 숫자 넘버링 제거
+    .replace(/\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,.]\d{3}.*/g, "") // SRT 고정 밀리초 규격 제거
+    .replace(/\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}[,.]\d{3}.*/g, "") // VTT 시간 스트림 규격 제거
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, "") // 유튜브 일반 자막 타임 코드 싹 제거
+    .replace(/<[^>]*>/g, "") // HTML 텍스트 노이즈 태그 클렌징
+    .replace(/^(NOTE|STYLE|REGION).*$/gm, "") // 메타 지시어 탈락
     .split("\n")
     .map(line => line.trim())
     .filter(line => line.length > 0)
     .join(" ")
-
-    // 공백 정리
-    .replace(/\s+/g, " ")
+    .replace(/\s+/g, " ") // 연달아 발생한 이중 공백 병합 정리
     .trim();
 
-  cleanedScript.value = cleaned;
+  if (cleanedScript) {
+    cleanedScript.value = cleaned;
+  }
 }
 
 function copyCleanScript() {
   const cleanedScript = document.getElementById("cleanedScript");
 
-  if (!cleanedScript.value.trim()) {
+  if (!cleanedScript || !cleanedScript.value.trim()) {
     alert("복사할 정리된 대본이 없습니다.");
     return;
   }
@@ -148,9 +145,9 @@ function downloadCleanScript() {
   downloadTextFile("cleaned-script.txt", cleanedScript);
 }
 
+// 분석 도구: 프롬프트 자동화 생성 프레임워크 섹션
 function makeSummaryPrompt() {
   const script = getAnalysisText();
-
   if (!script) return;
 
   const prompt = `
@@ -172,7 +169,6 @@ ${script}
 
 function makeShortsPrompt() {
   const script = getAnalysisText();
-
   if (!script) return;
 
   const prompt = `
@@ -194,7 +190,6 @@ ${script}
 
 function makeTitlePrompt() {
   const script = getAnalysisText();
-
   if (!script) return;
 
   const prompt = `
@@ -216,7 +211,6 @@ ${script}
 
 function makeThumbnailPrompt() {
   const script = getAnalysisText();
-
   if (!script) return;
 
   const prompt = `
@@ -237,8 +231,8 @@ ${script}
 }
 
 function getAnalysisText() {
-  const cleanedScript = document.getElementById("cleanedScript").value.trim();
-  const rawScript = document.getElementById("rawScript").value.trim();
+  const cleanedScript = document.getElementById("cleanedScript")?.value.trim() || "";
+  const rawScript = document.getElementById("rawScript")?.value.trim() || "";
 
   const script = cleanedScript || rawScript;
 
@@ -253,7 +247,7 @@ function getAnalysisText() {
 function copyPrompt() {
   const promptResult = document.getElementById("promptResult");
 
-  if (!promptResult.value.trim()) {
+  if (!promptResult || !promptResult.value.trim()) {
     alert("복사할 프롬프트가 없습니다.");
     return;
   }
@@ -263,21 +257,11 @@ function copyPrompt() {
 }
 
 function downloadAnalysis() {
-  const title =
-    document.getElementById("extensionTitle").textContent || "영상 제목 없음";
-
-  const channel =
-    document.getElementById("extensionChannel").textContent || "채널명 없음";
-
-  const url =
-    document.getElementById("extensionUrl").textContent || "";
-
-  const script =
-    document.getElementById("cleanedScript").value ||
-    document.getElementById("rawScript").value;
-
-  const prompt =
-    document.getElementById("promptResult").value;
+  const title = document.getElementById("extensionTitle").textContent || "영상 제목 없음";
+  const channel = document.getElementById("extensionChannel").textContent || "채널명 없음";
+  const url = document.getElementById("extensionUrl").textContent || "";
+  const script = document.getElementById("cleanedScript").value || document.getElementById("rawScript").value;
+  const prompt = document.getElementById("promptResult").value;
 
   if (!script.trim() && !prompt.trim()) {
     alert("다운로드할 분석 자료가 없습니다.");
@@ -313,10 +297,7 @@ ${prompt}
 }
 
 function downloadTextFile(filename, content) {
-  const blob = new Blob([content], {
-    type: "text/plain;charset=utf-8"
-  });
-
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
