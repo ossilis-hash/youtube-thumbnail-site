@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>유튜브 썸네일 추출기</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="container">
+    <h1>유튜브 썸네일 추출기</h1>
+    <p>유튜브 영상 주소를 넣으면 썸네일을 확인할 수 있습니다.</p>
+
+    <input 
+      id="youtubeUrl" 
+      type="text" 
+      placeholder="유튜브 주소를 붙여넣으세요"
+    />
+
+    <button onclick="extractThumbnail()">썸네일 추출하기</button>
+
+    <p id="errorMessage" class="error"></p>
+
+    <div id="result" class="result">
+      <h2>썸네일 미리보기</h2>
+      <img id="thumbnailImage" src="" alt="유튜브 썸네일" />
+
+      <a id="downloadLink" href="#" target="_blank">
+        썸네일 새 창으로 열기
+      </a>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
